@@ -3,11 +3,13 @@ package com.retailer.rewards.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.retailer.rewards.exceptionHandler.CustomerNotFoundException;
 import com.retailer.rewards.model.Customer;
+import com.retailer.rewards.model.RewardSummaryResponse;
 import com.retailer.rewards.model.Transaction;
 import com.retailer.rewards.repository.CustomerRepository;
 import com.retailer.rewards.repository.TransactionRepository;
@@ -59,7 +62,7 @@ public class RewardServiceTest {
 	}
 
 	@Test
-	void testCreateCustomerWithNullName() {
+	void testCreateCustomer_withNullName() {
 		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
 				() -> rewardService.createCustomer(null));
 		assertEquals("Customer name is required.", exception.getMessage());
@@ -77,7 +80,7 @@ public class RewardServiceTest {
 	}
 
 	@Test
-	void testGetCustomerNotFound() {
+	void testGetCustomer_notFound() {
 		when(customerRepository.findById(1L)).thenReturn(Optional.empty());
 
 		CustomerNotFoundException exception = assertThrows(CustomerNotFoundException.class,
@@ -98,52 +101,67 @@ public class RewardServiceTest {
 	}
 
 	@Test
-	void testGetTotalRewards() {
-		when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
-		when(transactionRepository.findByCustomerId(1L)).thenReturn(List.of(transaction));
-
-		int totalRewards = rewardService.getTotalRewards(1L);
-
-		assertEquals(90, totalRewards);
-	}
-
-	@Test
-	void testGetMonthlyRewards() {
-		when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
-		when(transactionRepository.findByCustomerIdAndDateBetween(1L, LocalDate.of(2024, 12, 1),
-				LocalDate.of(2024, 12, 31))).thenReturn(List.of(transaction));
-
-		int monthlyRewards = rewardService.getMonthlyRewards(1L, 12, 2024);
-
-		assertEquals(90, monthlyRewards);
-	}
-
-	@Test
-	void testGetMonthlyRewardsWithNoTransactions() {
-		when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
-		when(transactionRepository.findByCustomerIdAndDateBetween(1L, LocalDate.of(2024, 11, 1),
-				LocalDate.of(2024, 11, 30))).thenReturn(List.of());
-
-		int monthlyRewards = rewardService.getMonthlyRewards(1L, 11, 2024);
-
-		assertEquals(0, monthlyRewards);
-	}
-
-	@Test
-	void testGetTotalRewardsCustomerNotFound() {
-		when(customerRepository.findById(1L)).thenReturn(Optional.empty());
-
-		CustomerNotFoundException exception = assertThrows(CustomerNotFoundException.class,
-				() -> rewardService.getTotalRewards(1L));
-		assertEquals("Customer not found with ID: 1", exception.getMessage());
-	}
-
-	@Test
-	void testCreateTransactionCustomerNotFound() {
+	void testCreateTransaction_customerNotFound() {
 		when(customerRepository.findById(1L)).thenReturn(Optional.empty());
 
 		CustomerNotFoundException exception = assertThrows(CustomerNotFoundException.class,
 				() -> rewardService.createTransaction(1L, 120.0, LocalDate.now()));
 		assertEquals("Customer not found with ID: 1", exception.getMessage());
+	}
+
+	@Test
+	void testGetRewardsSummary() {
+		LocalDate startDate = LocalDate.of(2024, 1, 1);
+		LocalDate endDate = LocalDate.of(2024, 1, 31);
+
+		Transaction t1 = new Transaction(1L, 120.0, LocalDate.of(2024, 1, 10), customer);
+		Transaction t2 = new Transaction(2L, 220.0, LocalDate.of(2024, 1, 15), customer);
+		List<Transaction> transactions = Arrays.asList(t1, t2);
+
+		when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+		when(transactionRepository.findTransactionsByCustomerIdAndDateBetween(1L, startDate, endDate))
+				.thenReturn(transactions);
+
+		RewardSummaryResponse response = rewardService.getRewardsSummary(1L, startDate, endDate);
+
+		assertNotNull(response);
+		assertEquals(1L, response.getCustomerId());
+		assertEquals("Test Name", response.getCustomerName());
+		assertEquals(380, response.getTotalRewardPoints());
+		assertTrue(response.getRewardPointsPerMonth().containsKey(Month.JANUARY));
+		assertEquals(380, response.getRewardPointsPerMonth().get(Month.JANUARY));
+
+		verify(customerRepository, times(1)).findById(1L);
+		verify(transactionRepository, times(1)).findTransactionsByCustomerIdAndDateBetween(1L, startDate, endDate);
+	}
+
+	@Test
+	void testGetRewardsSummary_invalidEndDate() {
+		LocalDate startDate = LocalDate.of(2024, 1, 1);
+		LocalDate endDate = LocalDate.of(2023, 12, 31);
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+			rewardService.getRewardsSummary(1L, startDate, endDate);
+		});
+		assertEquals("End date cannot be before start date.", exception.getMessage());
+
+		verify(customerRepository, times(0)).findById(1L);
+		verify(transactionRepository, times(0)).findTransactionsByCustomerIdAndDateBetween(1L, startDate, endDate);
+	}
+
+	@Test
+	void testGetRewardsSummary_customerNotFound() {
+		LocalDate startDate = LocalDate.of(2024, 1, 1);
+		LocalDate endDate = LocalDate.of(2024, 1, 31);
+
+		when(customerRepository.findById(1L)).thenReturn(Optional.empty());
+
+		CustomerNotFoundException exception = assertThrows(CustomerNotFoundException.class, () -> {
+			rewardService.getRewardsSummary(1L, startDate, endDate);
+		});
+		assertEquals("Customer not found with ID: 1", exception.getMessage());
+
+		verify(customerRepository, times(1)).findById(1L);
+		verify(transactionRepository, times(0)).findTransactionsByCustomerIdAndDateBetween(1L, startDate, endDate);
 	}
 }

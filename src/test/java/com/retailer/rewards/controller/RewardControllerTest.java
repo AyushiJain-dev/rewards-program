@@ -7,7 +7,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +23,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.retailer.rewards.model.Customer;
+import com.retailer.rewards.model.RewardSummaryResponse;
 import com.retailer.rewards.model.Transaction;
 import com.retailer.rewards.service.RewardService;
 
@@ -79,24 +83,24 @@ public class RewardControllerTest {
 	}
 
 	@Test
-	void testGetTotalRewards() throws Exception {
-		when(rewardService.getTotalRewards(1L)).thenReturn(90);
+	void testGetRewardsSummary() throws Exception {
+		LocalDate startDate = LocalDate.of(2024, 1, 1);
+		LocalDate endDate = LocalDate.of(2024, 1, 31);
 
-		mockMvc.perform(MockMvcRequestBuilders.get("/api/rewards/total-rewards/{customerId}", 1L))
-				.andExpect(status().isOk()).andExpect(jsonPath("$").value(90));
+		Transaction t1 = new Transaction(1L, 120.0, LocalDate.of(2024, 1, 10), customer);
+		Transaction t2 = new Transaction(2L, 220.0, LocalDate.of(2024, 1, 15), customer);
+		List<Transaction> transactions = Arrays.asList(t1, t2);
 
-		verify(rewardService, times(1)).getTotalRewards(1L);
+		when(rewardService.getRewardsSummary(1L, startDate, endDate))
+				.thenReturn(new RewardSummaryResponse(1L, "Test Name", transactions, Map.of(Month.JANUARY, 380), 380));
+
+		mockMvc.perform(MockMvcRequestBuilders.get("/api/rewards/reward-summary/{customerId}", 1L)
+				.param("startDate", startDate.toString()).param("endDate", endDate.toString()))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.customerId").value(1L))
+				.andExpect(jsonPath("$.customerName").value("Test Name"))
+				.andExpect(jsonPath("$.totalRewardPoints").value(380))
+				.andExpect(jsonPath("$.rewardPointsPerMonth.JANUARY").value(380));
+
+		verify(rewardService, times(1)).getRewardsSummary(1L, startDate, endDate);
 	}
-
-	@Test
-	void testGetMonthlyRewards() throws Exception {
-		when(rewardService.getMonthlyRewards(1L, 12, 2024)).thenReturn(90);
-
-		mockMvc.perform(MockMvcRequestBuilders.get("/api/rewards/monthly-rewards/{customerId}", 1L)
-				.param("month", String.valueOf(12)).param("year", String.valueOf(2024))).andExpect(status().isOk())
-				.andExpect(jsonPath("$").value(90));
-
-		verify(rewardService, times(1)).getMonthlyRewards(1L, 12, 2024);
-	}
-
 }

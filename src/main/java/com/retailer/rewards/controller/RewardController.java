@@ -3,6 +3,7 @@ package com.retailer.rewards.controller;
 import java.time.LocalDate;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.retailer.rewards.model.Customer;
+import com.retailer.rewards.model.RewardSummaryResponse;
 import com.retailer.rewards.model.Transaction;
 import com.retailer.rewards.service.RewardService;
 
@@ -42,18 +44,6 @@ public class RewardController {
 	}
 
 	/**
-	 * Fetches the details of a customer by their ID.
-	 * 
-	 * @param customerId The unique ID of the customer.
-	 * @return The Customer object containing details of the requested customer.
-	 */
-	@GetMapping("/customers/{customerId}")
-	public Customer getCustomer(@PathVariable Long customerId) {
-		log.info("Fetching customer details for customer ID: {}", customerId);
-		return rewardService.getCustomer(customerId);
-	}
-
-	/**
 	 * Creates a transaction for the specified customer with the given amount and
 	 * date.
 	 * 
@@ -75,33 +65,35 @@ public class RewardController {
 	}
 
 	/**
-	 * Fetches the total rewards for a specified customer based on all transactions.
+	 * Fetches the details of a customer by their ID.
 	 * 
 	 * @param customerId The unique ID of the customer.
-	 * @return The total reward points of the customer.
+	 * @return The Customer object containing details of the requested customer.
 	 */
-	@GetMapping("/total-rewards/{customerId}")
-	public int getTotalRewards(@PathVariable Long customerId) {
-		log.info("Fetching total rewards for customer ID: {}", customerId);
-		int totalRewards = rewardService.getTotalRewards(customerId);
-		log.info("Total rewards for customer ID {}: {}", customerId, totalRewards);
-		return totalRewards;
+	@GetMapping("/customers/{customerId}")
+	public Customer getCustomer(@PathVariable Long customerId) {
+		log.info("Fetching customer details for customer ID: {}", customerId);
+		return rewardService.getCustomer(customerId);
 	}
 
 	/**
-	 * Fetches the monthly rewards for a specified customer based on a specific
-	 * month and year.
+	 * Retrieves a summary of reward points for a given customer within a specified
+	 * date range.
 	 * 
-	 * @param customerId The unique ID of the customer.
-	 * @param month      The month for which the rewards are to be calculated.
-	 * @param year       The year for which the rewards are to be calculated.
-	 * @return The reward points earned in the specified month.
+	 * @param customerId the unique ID of the customer for whom the transaction is
+	 *                   being created.
+	 * @param startDate  the start date of the period to consider for transactions
+	 * @param endDate    the end date of the period to consider for transactions
+	 * @return a RewardSummaryResponse containing the customer's details,
+	 *         transactions, reward points per month, and the total reward points
+	 *         earned in the specified period
 	 */
-	@GetMapping("/monthly-rewards/{customerId}")
-	public int getMonthlyRewards(@PathVariable Long customerId, @RequestParam int month, @RequestParam int year) {
-		log.info("Fetching monthly rewards for customer ID: {} for month: {} and year: {}", customerId, month, year);
-		int monthlyRewards = rewardService.getMonthlyRewards(customerId, month, year);
-		log.info("Monthly rewards for customer ID {} in {}/{}: {}", customerId, month, year, monthlyRewards);
-		return monthlyRewards;
+	@GetMapping("reward-summary/{customerId}")
+	public ResponseEntity<RewardSummaryResponse> getRewardsSummary(@PathVariable Long customerId,
+			@RequestParam LocalDate startDate, @RequestParam LocalDate endDate) {
+		log.info("Fetching rewards summary for customer ID: {} between period {} and {}", customerId, startDate,
+				endDate);
+		RewardSummaryResponse response = rewardService.getRewardsSummary(customerId, startDate, endDate);
+		return ResponseEntity.ok(response);
 	}
 }

@@ -1,8 +1,14 @@
 package com.retailer.rewards.service;
 
 import java.time.LocalDate;
+import java.time.Month;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -10,6 +16,7 @@ import org.springframework.stereotype.Service;
 import com.retailer.rewards.RewardCalculator;
 import com.retailer.rewards.exceptionHandler.CustomerNotFoundException;
 import com.retailer.rewards.model.Customer;
+import com.retailer.rewards.model.RewardSummaryResponse;
 import com.retailer.rewards.model.Transaction;
 import com.retailer.rewards.repository.CustomerRepository;
 import com.retailer.rewards.repository.TransactionRepository;
@@ -74,50 +81,49 @@ public class RewardService {
 	}
 
 	/**
-	 * Calculates the total reward points for a customer based on their
-	 * transactions.
+	 * Retrieves a summary of reward points for a given customer within a specified
+	 * date range. The summary includes the total reward points, the transactions
+	 * made during the period, and the reward points broken down by month.
 	 *
-	 * @param customerId the ID of the customer for whom to calculate reward points.
-	 * @return the total reward points accumulated by the customer.
+	 * @param customerId the unique ID of the customer
+	 * @param startDate  the start date of the period to consider for transactions
+	 * @param endDate    the end date of the period to consider for transactions
+	 * @return a RewardSummaryResponse containing the customer's details,
+	 *         transactions, reward points per month, and the total reward points
+	 *         earned in the specified period
+	 * @throws IllegalArgumentException if the endDate is before the startDate
 	 */
-	public int getTotalRewards(Long customerId) {
+	public RewardSummaryResponse getRewardsSummary(Long customerId, LocalDate startDate, LocalDate endDate) {
 
-		// Check if customer exists
-		findCustomerById(customerId);
-
-		// Fetch all transactions for the customer
-		List<Transaction> allTransactions = transactionRepository.findByCustomerId(customerId);
-
-		return allTransactions.stream()
-				.mapToInt(transaction -> RewardCalculator.calculateRewardPoints(transaction.getAmount())).sum();
-	}
-
-	/**
-	 * Calculates the reward points for a customer for a specific month and year.
-	 *
-	 * @param customerId the ID of the customer.
-	 * @param month      the month for which to calculate rewards.
-	 * @param year       the year for which to calculate rewards.
-	 * @return the total reward points for the customer for that month.
-	 */
-	public int getMonthlyRewards(Long customerId, int month, int year) {
-		if (month < 1 || month > 12) {
-			throw new IllegalArgumentException("Month must be between 1 and 12.");
+		// Validate that the endDate is after startDate
+		if (endDate.isBefore(startDate)) {
+			throw new IllegalArgumentException("End date cannot be before start date.");
 		}
 
 		// Check if customer exists
-		findCustomerById(customerId);
+		Customer customer = findCustomerById(customerId);
 
-		// Define start and end dates of the month
-		LocalDate startDate = LocalDate.of(year, month, 1);
-		LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
-
-		// Fetch transactions for the customer in the given date range
-		List<Transaction> monthlyTransactions = transactionRepository.findByCustomerIdAndDateBetween(customerId,
+		List<Transaction> transactions = transactionRepository.findTransactionsByCustomerIdAndDateBetween(customerId,
 				startDate, endDate);
 
-		return monthlyTransactions.stream()
-				.mapToInt(transaction -> RewardCalculator.calculateRewardPoints(transaction.getAmount())).sum();
+		// Group transactions by month and calculate reward points per month
+		Map<Month, Integer> rewardPointsPerMonth = transactions.stream().filter(
+				transaction -> !transaction.getDate().isBefore(startDate) && !transaction.getDate().isAfter(endDate))
+				.collect(Collectors.groupingBy(transaction -> transaction.getDate().getMonth(), TreeMap::new, Collectors
+						.summingInt(transaction -> RewardCalculator.calculateRewardPoints(transaction.getAmount()))));
+
+		Set<Month> monthsInRange = monthsBetween(startDate, endDate);
+
+		// Ensure that all months in the range have an entry in the rewardPointsPerMonth map
+		for (Month month : monthsInRange) {
+			rewardPointsPerMonth.putIfAbsent(month, 0);
+		}
+
+		// Calculate total reward points across all transactions
+		int totalPoints = rewardPointsPerMonth.values().stream().mapToInt(Integer::intValue).sum();
+
+		return new RewardSummaryResponse(customer.getId(), customer.getName(), transactions, rewardPointsPerMonth,
+				totalPoints);
 	}
 
 	/**
@@ -134,5 +140,25 @@ public class RewardService {
 
 		return customerRepository.findById(customerId)
 				.orElseThrow(() -> new CustomerNotFoundException("Customer not found with ID: " + customerId));
+	}
+
+	/**
+	 * Method to get all months between startDate and endDate
+	 *
+	 * @param startDate the start date of the period.
+	 * @param endDate   the end date of the period.
+	 * @return months between the given date range.
+	 */
+	private Set<Month> monthsBetween(LocalDate startDate, LocalDate endDate) {
+		Set<Month> months = new HashSet<>();
+		LocalDate currentDate = startDate;
+
+		// Add months from startDate to endDate
+		while (!currentDate.isAfter(endDate)) {
+			months.add(currentDate.getMonth());
+			currentDate = currentDate.plusMonths(1);
+		}
+
+		return months;
 	}
 }

@@ -1,59 +1,185 @@
-#Rewards Program API
+# Rewards Program API
 
 An API that calculates and tracks customer reward points based on purchase transactions. Points are awarded as follows:
 
-- 2 points per dollar for amounts over $100.
-- 1 point per dollar for amounts between $50 and $100.
+- **2 points per dollar** for amounts over $100.
+- **1 point per dollar** for amounts between $50 and $100.
 
-#Table of Contents
+## Table of Contents
 
-- Overview
-- Architecture
-- Technologies
-- API Endpoints
-- Running the Project
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Technologies](#technologies)
+- [API Endpoints](#api-endpoints)
+- [Running the Project](#running-the-project)
 
-#Overview
+## Overview
 
-This API calculates reward points for customers based on their transaction amounts:
+This API calculates reward points for customers based on their transaction amounts. The points are awarded according to the following logic:
 
-- Example: A $120 purchase = 2*$20 + 1*$50 = 90 points (2 points for $20 over $100, 1 point for $50 between $50 and $100).
+- For purchases over **$100**, customers earn **2 points per dollar** for the amount over $100.
+- For purchases between **$50 and $100**, customers earn **1 point per dollar** for the amount between $50 and $100.
 
-#Architecture
+Example Calculation
 
-- Controller Layer: Handles incoming HTTP requests.
-- Service Layer: Contains business logic to calculate points.
-- Repository Layer: Manages data storage.
-- POJOs: Data models for Customer and their transactions.
-- Global Exception Handler: Catches and returns consistent error messages.
+For a $120 purchase:
+- **$20** over $100 earns **2 points per dollar**: `2 * $20 = 40 points`.
+- **$50** between $50 and $100 earns **1 point per dollar**: `1 * $50 = 50 points`.
 
-#Technologies
+Total reward points: **90 points**.
 
-- Java: The primary programming language used to implement the business logic.
-- Spring Boot: Framework used to develop the RESTful API.
-- JUnit: For writing test cases.
-- H2 Database: Used to store transaction records and calculate points.
-- Postman: Used for testing the API endpoints.
-- Maven: Build automation tool.
+## Architecture
 
-#API Endpoints
+The API is structured in a layered architecture:
 
-- POST /create-customer?name={customerName} -> Creates a new customer.
+- **Controller Layer**: Handles incoming HTTP requests and provides appropriate responses.
+- **Service Layer**: Contains the business logic to calculate reward points.
+- **Repository Layer**: Manages the storage of transaction records.
+- **POJOs (Plain Old Java Objects)**: Data models for customers and their transactions.
+- **Global Exception Handler**: Catches and returns consistent error messages.
 
-- GET /customers/{customerId} -> Fetches the details of a customer by their ID.
+## Technologies
 
-- POST /create-transaction?customerId={customerId}&amount={amount}&date={date} -> Creates a transaction for the specified customer with the given amount and date(Optional).
+The following technologies are used to implement the API:
 
-- GET /total-rewards/{customerId} -> Fetches the total rewards for a specified customer based on all transactions.
+- **Java**: The primary programming language used to implement the business logic.
+- **Spring Boot**: Framework used to build the RESTful API.
+- **JUnit**: Used for unit testing.
+- **H2 Database**: An in-memory database used to store transaction records and calculate points.
+- **Postman**: Tool used for testing the API endpoints.
+- **Maven**: Build automation tool.
 
-- GET /monthly-rewards/{customerId}?month={month}&year={year} -> Fetches the monthly rewards for a specified customer based on a specific month and year.
+## API Endpoints
 
-#Running the Project
+### 1. Create a New Customer.
 
-- Clone the repository: git clone https://github.com/AyushiJain-dev/rewards-program.git
+**POST** `/api/rewards/create-customer?name={customerName}`
 
-- Build the project: mvn clean install
+**Request Example**: 
+`/api/rewards/create-customer?name=XYZ`
 
-- Run the application: mvn spring-boot:run
+**Response**: 
+ 
+```json
+{
+    "id": 1,
+    "name": "XYZ",
+    "transactions": null
+}
+```
 
-API available at http://localhost:8080.
+### 2. Create a new transaction for the customer with the given amount and date(Optional).
+
+**POST** `/api/rewards/create-transaction?customerId={customerId}&amount={amount}&date={date}`
+
+**Request Example**: 
+`/api/rewards/create-transaction?customerId=1&amount=120&date=2024-12-30`
+
+**Response**:
+
+```json
+{
+    "id": 1,
+    "amount": 120.0,
+    "date": "2024-12-30"
+}
+```
+
+**Request Example**: 
+`/api/rewards/create-transaction?customerId=1&amount=120`
+
+**Response**:
+
+```json
+{
+    "id": 1,
+    "amount": 120.0,
+    "date": {currentDate}
+}
+```
+
+### 3. Fetch the customer details by their ID.
+
+**GET** `/api/rewards/customers/{customerId}`
+
+**Request Example**: 
+`/api/rewards/customers/1`
+
+**Response**:
+
+```json
+{
+    "id": 1,
+    "name": "XYZ",
+    "transactions": [
+        {
+            "id": 1,
+            "amount": 120.0,
+            "date": "2024-12-30"
+        }
+    ]
+}
+```
+
+### 4. Fetch the reward summary for a customer within a specified date range.
+
+**GET** `/api/rewards/reward-summary/{customerId}?startDate={startDate}&endDate={endDate}`
+
+**Request Example**: 
+`/api/rewards/reward-summary/1?startDate=2024-10-01&endDate=2024-12-31`
+
+**Response**:
+
+```json
+{
+    "customerId": 1,
+    "customerName": "XYZ",
+    "transactions": [
+        {
+            "id": 1,
+            "amount": 120.0,
+            "date": "2024-12-30"
+        },
+        {
+            "id": 2,
+            "amount": 220.0,
+            "date": "2024-11-26"
+        }
+    ],
+    "rewardPointsPerMonth": {
+        "OCTOBER": 0,
+        "NOVEMBER": 290,
+        "DECEMBER": 90
+    },
+    "totalRewardPoints": 380
+}
+```
+
+## Running the Project
+
+Follow the steps below to clone, build, and run the project:
+
+### 1. Clone the Repository
+
+Clone the project to your local machine using the following command:
+
+```bash
+git clone https://github.com/AyushiJain-dev/rewards-program.git
+```
+
+### 2. Build the Project
+
+Navigate to the project directory and build the project using Maven. This will download dependencies and compile the project.
+
+```bash
+mvn clean install
+```
+
+### 3. Run the Application
+After building the project, you can run the application with the following command:
+
+```bash
+mvn spring-boot:run
+```
+
+Once the application is running, you can access the API at [http://localhost:8080](http://localhost:8080)

@@ -46,9 +46,9 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
 			MethodArgumentTypeMismatchException ex) {
 		String errorMessage;
-		if ("date".equals(ex.getName())) {
-			log.error("date is required. Its value should be in yyyy-mm-dd format.");
-			errorMessage = "date is required. Its value should be in yyyy-mm-dd format.";
+		if ("date".equals(ex.getName()) || "startDate".equals(ex.getName()) || "endDate".equals(ex.getName())) {
+			log.error("Date value should be in yyyy-mm-dd format.");
+			errorMessage = "Date value should be in yyyy-mm-dd format.";
 		} else {
 			log.error(ex.getName() + " is required. Its value can not be null or empty.");
 			errorMessage = ex.getName() + " is required. Its value can not be null or empty.";
