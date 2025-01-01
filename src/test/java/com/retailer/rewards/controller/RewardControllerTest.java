@@ -10,7 +10,6 @@ import java.time.LocalDate;
 import java.time.Month;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +22,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.retailer.rewards.model.Customer;
+import com.retailer.rewards.model.MonthRewardSummary;
 import com.retailer.rewards.model.RewardSummaryResponse;
 import com.retailer.rewards.model.Transaction;
 import com.retailer.rewards.service.RewardService;
@@ -91,15 +91,20 @@ public class RewardControllerTest {
 		Transaction t2 = new Transaction(2L, 220.0, LocalDate.of(2024, 1, 15), customer);
 		List<Transaction> transactions = Arrays.asList(t1, t2);
 
+		MonthRewardSummary m1 = new MonthRewardSummary(2024, Month.JANUARY, 380);
+		List<MonthRewardSummary> monthRewardSummary = Arrays.asList(m1);
+
 		when(rewardService.getRewardsSummary(1L, startDate, endDate))
-				.thenReturn(new RewardSummaryResponse(1L, "Test Name", transactions, Map.of(Month.JANUARY, 380), 380));
+				.thenReturn(new RewardSummaryResponse(1L, "Test Name", transactions, monthRewardSummary, 380));
 
 		mockMvc.perform(MockMvcRequestBuilders.get("/api/rewards/reward-summary/{customerId}", 1L)
 				.param("startDate", startDate.toString()).param("endDate", endDate.toString()))
 				.andExpect(status().isOk()).andExpect(jsonPath("$.customerId").value(1L))
 				.andExpect(jsonPath("$.customerName").value("Test Name"))
 				.andExpect(jsonPath("$.totalRewardPoints").value(380))
-				.andExpect(jsonPath("$.rewardPointsPerMonth.JANUARY").value(380));
+				.andExpect(jsonPath("$.rewardPointsPerMonth[0].year").value(2024))
+	            .andExpect(jsonPath("$.rewardPointsPerMonth[0].month").value("JANUARY"))
+	            .andExpect(jsonPath("$.rewardPointsPerMonth[0].points").value(380));
 
 		verify(rewardService, times(1)).getRewardsSummary(1L, startDate, endDate);
 	}

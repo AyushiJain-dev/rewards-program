@@ -146,11 +146,23 @@ The following technologies are used to implement the API:
             "date": "2024-11-26"
         }
     ],
-    "rewardPointsPerMonth": {
-        "OCTOBER": 0,
-        "NOVEMBER": 290,
-        "DECEMBER": 90
-    },
+    "rewardPointsPerMonth": [
+        {
+            "year": 2024,
+            "month": "OCTOBER",
+            "points": 0
+        },
+        {
+            "year": 2024,
+            "month": "NOVEMBER",
+            "points": 290
+        },
+        {
+            "year": 2024,
+            "month": "DECEMBER",
+            "points": 90
+        }
+    ],
     "totalRewardPoints": 380
 }
 ```

@@ -2,11 +2,10 @@ package com.retailer.rewards.service;
 
 import java.time.LocalDate;
 import java.time.Month;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -16,6 +15,7 @@ import org.springframework.stereotype.Service;
 import com.retailer.rewards.RewardCalculator;
 import com.retailer.rewards.exceptionHandler.CustomerNotFoundException;
 import com.retailer.rewards.model.Customer;
+import com.retailer.rewards.model.MonthRewardSummary;
 import com.retailer.rewards.model.RewardSummaryResponse;
 import com.retailer.rewards.model.Transaction;
 import com.retailer.rewards.repository.CustomerRepository;
@@ -112,17 +112,26 @@ public class RewardService {
 				.collect(Collectors.groupingBy(transaction -> transaction.getDate().getMonth(), TreeMap::new, Collectors
 						.summingInt(transaction -> RewardCalculator.calculateRewardPoints(transaction.getAmount()))));
 
-		Set<Month> monthsInRange = monthsBetween(startDate, endDate);
+		List<MonthRewardSummary> monthRewardSummaryList = new ArrayList<MonthRewardSummary>();
 
-		// Ensure that all months in the range have an entry in the rewardPointsPerMonth map
-		for (Month month : monthsInRange) {
-			rewardPointsPerMonth.putIfAbsent(month, 0);
+		// Iterate over months in the range and add corresponding reward points
+		LocalDate currentMonth = startDate.withDayOfMonth(1); // Start from the first day of the start date month
+		while (!currentMonth.isAfter(endDate)) {
+			Month month = currentMonth.getMonth();
+			int year = currentMonth.getYear();
+			int points = rewardPointsPerMonth.getOrDefault(month, 0);
+
+			// Add the month reward summary to the list
+			monthRewardSummaryList.add(new MonthRewardSummary(year, month, points));
+
+			// Move to the next month
+			currentMonth = currentMonth.plusMonths(1);
 		}
 
 		// Calculate total reward points across all transactions
-		int totalPoints = rewardPointsPerMonth.values().stream().mapToInt(Integer::intValue).sum();
+		int totalPoints = monthRewardSummaryList.stream().mapToInt(MonthRewardSummary::getPoints).sum();
 
-		return new RewardSummaryResponse(customer.getId(), customer.getName(), transactions, rewardPointsPerMonth,
+		return new RewardSummaryResponse(customer.getId(), customer.getName(), transactions, monthRewardSummaryList,
 				totalPoints);
 	}
 
@@ -140,25 +149,5 @@ public class RewardService {
 
 		return customerRepository.findById(customerId)
 				.orElseThrow(() -> new CustomerNotFoundException("Customer not found with ID: " + customerId));
-	}
-
-	/**
-	 * Method to get all months between startDate and endDate
-	 *
-	 * @param startDate the start date of the period.
-	 * @param endDate   the end date of the period.
-	 * @return months between the given date range.
-	 */
-	private Set<Month> monthsBetween(LocalDate startDate, LocalDate endDate) {
-		Set<Month> months = new HashSet<>();
-		LocalDate currentDate = startDate;
-
-		// Add months from startDate to endDate
-		while (!currentDate.isAfter(endDate)) {
-			months.add(currentDate.getMonth());
-			currentDate = currentDate.plusMonths(1);
-		}
-
-		return months;
 	}
 }

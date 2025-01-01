@@ -3,7 +3,6 @@ package com.retailer.rewards.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.retailer.rewards.exceptionHandler.CustomerNotFoundException;
 import com.retailer.rewards.model.Customer;
+import com.retailer.rewards.model.MonthRewardSummary;
 import com.retailer.rewards.model.RewardSummaryResponse;
 import com.retailer.rewards.model.Transaction;
 import com.retailer.rewards.repository.CustomerRepository;
@@ -128,8 +128,13 @@ public class RewardServiceTest {
 		assertEquals(1L, response.getCustomerId());
 		assertEquals("Test Name", response.getCustomerName());
 		assertEquals(380, response.getTotalRewardPoints());
-		assertTrue(response.getRewardPointsPerMonth().containsKey(Month.JANUARY));
-		assertEquals(380, response.getRewardPointsPerMonth().get(Month.JANUARY));
+		assertNotNull(response.getRewardPointsPerMonth());
+		assertEquals(1, response.getRewardPointsPerMonth().size());
+
+		MonthRewardSummary monthRewardSummary = response.getRewardPointsPerMonth().get(0);
+		assertEquals(2024, monthRewardSummary.getYear());
+		assertEquals(Month.JANUARY, monthRewardSummary.getMonth());
+		assertEquals(380, monthRewardSummary.getPoints());
 
 		verify(customerRepository, times(1)).findById(1L);
 		verify(transactionRepository, times(1)).findTransactionsByCustomerIdAndDateBetween(1L, startDate, endDate);

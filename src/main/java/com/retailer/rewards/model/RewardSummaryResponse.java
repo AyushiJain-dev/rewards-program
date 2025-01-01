@@ -1,8 +1,6 @@
 package com.retailer.rewards.model;
 
-import java.time.Month;
 import java.util.List;
-import java.util.Map;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -24,6 +22,6 @@ public class RewardSummaryResponse {
 	private Long customerId;
 	private String customerName;
 	private List<Transaction> transactions;
-	private Map<Month, Integer> rewardPointsPerMonth;
+	private List<MonthRewardSummary> rewardPointsPerMonth;
 	private int totalRewardPoints;
 }
