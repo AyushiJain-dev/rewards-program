@@ -115,7 +115,7 @@ public class RewardService {
 		List<MonthRewardSummary> monthRewardSummaryList = new ArrayList<MonthRewardSummary>();
 
 		// Iterate over months in the range and add corresponding reward points
-		LocalDate currentMonth = startDate.withDayOfMonth(1); // Start from the first day of the start date month
+		LocalDate currentMonth = startDate.withDayOfMonth(1);
 		while (!currentMonth.isAfter(endDate)) {
 			Month month = currentMonth.getMonth();
 			int year = currentMonth.getYear();
